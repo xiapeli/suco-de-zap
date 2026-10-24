@@ -1,0 +1,10 @@
+# Google Agenda — implementação16Oct
+Autorizado por Phelipe integrar Google Agenda. Escopo: OAuth individual central no Convex, agenda principal, convite avulso revisto e confirmado, recibo e reconciliação; WhatsApp readonly. Preservar17temas/tipospróprios/cota3/Cofre e dados do proprietário.
+
+UI: rota Agenda + conexão/desconexão/status; entrada em suco pronto e biblioteca. Backend encontra intenção de reunião e e-mail literal em mensagens do recorte de um suco (sem IA nova), fornece fontes e ticket assinado de curta duração. Dates relativas/horário/fuso não confirmados pedem preenchimento/revisão. Grupos com associação ambígua não atribuem destinatário automaticamente. Não tratar email avulso como reunião.
+
+Segurança: ticket assinado liga tenant/conta/suco/âncora/candidatos; Convex exige sessão e pertencimento da conta antes de salvar rascunho. Confirmação central com CASrevisão+hash, aprovação+job atômicos. OAuth ticket/state/cookiebrowser/PKCE expiráveis e usoúnico; callbackfixo .convex.site, redirectretorno allowlist. Tokens sócifrados(AESGCM+AADconta) no central; sem navegador/worker WA. Desconectar invalidaepoch e trabalhos antigos exigem nova confirmação. OAuth/env Google inexistentes nosnomeslocais inspecionados; verificarcloud/config sem imprimirsegredos. Não criarcredenciaisnovas enquanto houver resposta a incidente pendente; implementar/testartudo independentemente disso.
+
+Executor: eventId fixo, marcador/hash remoto; job persistente+lease+cronrecuperação. GETantesPOST, marca dispatch antesefeito, timeout/crash→GETsomente/reconciliação; nenhum novoID ou reenvioautomático às cegas. Recibo distingue evento criado/notificação solicitada de entrega/aceite. Falhadesconexãonãoapaga histórico. HTTP/providersmockados nos testes, não enviarconvitesreais a contatos.
+
+Aceite: autenticação/IDOR; state/cookie/replay/expiry; tokens ocultos/AAD; PKCEscope/refresh/revogação; e-mailcontexto/negação/grupo; fusoambíguo/datasinválidas; revisão/cliqueduplo; timeoutapóscriação/crash/epochrevogado; 17modelos/regressõesmanuais; UI1440/390/320 e revisão independente. Não confundir implementação/testessemprovider comOAuthreal/publicação.

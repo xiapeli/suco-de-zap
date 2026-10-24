@@ -1,0 +1,86 @@
+{
+  "task": "Rodada 2 — correção dos defeitos apontados na revisão da primeira entrega (backend staging isolado suco-launch-20261015)",
+  "date": "2026-10-15",
+  "actor": "GLM5.3 FLAGSHIP (worker), Root = revisão/qa",
+  "constraints_respected": [
+    "nenhuma edição fora de backend/",
+    "sem credenciais, rede WhatsApp, modelos (Qwen/Muse intocados), deploy, mensagens",
+    "src/onboarding.ts e schema correspondente NÃO criados/editados (fica para o Root)",
+    "serviço llm-queue de produção NÃO reiniciado (Root reinicia depois); testes usam porta efêmera + upstream falso local",
+    "MODEL default ('qwen') inalterado"
+  ],
+  "commands_pass": {
+    "typecheck": "npm run typecheck → OK (sem erros)",
+    "typecheck_test": "npm run typecheck:test → OK (sem erros)",
+    "build": "npm run build → OK (dist/ gerado)",
+    "test": "npm test → 36 tests / 36 pass / 0 fail / 0 skipped",
+    "queue_syntax": "node --check tools/llm-queue.mjs → OK",
+    "queue_test_isolated": "npx tsx --test tests/llm-queue.test.ts → 1 pass (spawn real da fila + upstream HTTP falso)"
+  },
+  "defects_fixed": {
+    "1_clientip_bind_trustrate": [
+      "index.ts serve() com config.host — default 127.0.0.1, override explícito HOST/BIND_HOST (legado 0.0.0.0 é decisão consciente)",
+      "XFF/x-real-ip NUNCA mais identificam cliente; CF-Connecting-IP aceito só com TRUST_CLOUDFLARE_PROXY=true E remoteAddress loopback (adapter/tunnel na mesma máquina)",
+      "rotas públicas: chave estática global (bucket único); autenticadas: chave por conta (token) — independente de IP",
+      "RateLimiter bornado: maxKeys + eviction (expiradas primeiro, depois mais antiga) — sem DoS de memória",
+      "AiConcurrencyGate(1): segunda operação IA → 429 + Retry-After imediato (não espera na fila)",
+      "LLM off/não configurado → 503 + Retry-After: 300 na entrada do guard (geração não é aceita)",
+      "trust boundary documentada em config.ts e specs/reliability_design.md §2/§6a"
+    ],
+    "2_body_bytes": [
+      "middleware OFICIAL hono/body-limit (pacote 4.6.14 conferido) aplicado em '*' — streaming, conta bytes, corta no teto, sem ramo de bypass",
+      "parseJsonBody conta bytes do arrayBuffer (não UTF-16); PATCH /api/chats e /api/settings/extraction migrados de c.req.json() para parseJsonBody",
+      "testes reais: ReadableStream sem content-length (chunked), 6000 emojis (24KiB bytes vs 12K units UTF-16) → 413 na waitlist; 300KiB stream → 413 no teto global; JSON []/null → 400",
+      "CSRF: POST/PUT/PATCH/DELETE com Origin desconhecida → 403 antes de agir (rotas autenticadas e públicas); sem Origin passa; preflight ruim → 403 (preservado)"
+    ],
+    "3_start_logout_race": [
+      "beginAttempt() ANTES do primeiro await — logout durante await mata a tentativa no recheck",
+      "recheck stopped+geração após useMultiFileAuthState, após fetchLatestBaileysVersion e antes/depois de criar o socket",
+      "markStopped() incrementa geração (invalida start pendente); stopped nunca é re-setado false por tentativa morta",
+      "logoutWhatsApp desapega do socket (sock=null) ANTES do await logout — start concorrente não é clobbered",
+      "todos os handlers de evento cercados com isLive() (socket corrente + geração + !stopped), inclusive loops de DB do history sync (mensagens/chats) — eventos stale não geram escritas novas",
+      "authdir só é limpo em 401 loggedOut confirmado ou logout explícito (falha transitória preserva creds — inalterado e re-verificado)",
+      "markSyncing(gen, true) ao iniciar o lote e (gen, false) no finally — bug do !isLatest corrigido; estado real preservado"
+    ],
+    "4_startup_order": [
+      "serve() PRIMEIRO → initDb() → startWhatsApp() sem await + startCron(): API/QR/reconnect não esperam PG nem o version fetch do WA",
+      "erros de startup (auth state/version fetch) → tracker.markDisconnected(gen, undefined) (estado explícito 'reconnecting') + UM retry cercado no FencedTimer com backoff — sem 'connecting' eterno, sem storm"
+    ],
+    "5_llm_ready": [
+      "CONFERÊNCIA do staging: tools/llm-queue.mjs JÁ tinha passthrough GET /v1/* (proxy de /v1/models) — a alegação de false negative não se aplica a este arquivo; mesmo assim o /ready foi adicionado como rota de readiness própria",
+      "fila: GET /ready → probe REAL do upstream (GET /health com fallback /v1/models; 404/405 = não suportado → tenta próxima; outro erro ou rede = offline, erro NÃO mascara), cache TTL (LLQ_READY_TTL_MS, default 10s) + timeout (LLM_READY_TIMEOUT_MS, default 5s) + single-flight; 200 {ok:true} / 503 {ok:false}; no-store",
+      "backend: config LLM_READY_URL com precedência no LlmReadiness (api.ts /ready + cron.ts); 503/erro de rede = 'unreachable'",
+      "testes: fake fetch não usado para a fila — spawn REAL do processo + servidores HTTP reais (upstream falso + fila) confirmam endpoint e probe do backend (ok → unreachable quando upstream morre)"
+    ],
+    "6_misc": [
+      "GET /api/status segue c.json(getStatus()) — coerência garantida pelas correções do tracker (markSyncing/markStopped/fencing); snapshot é fonte única",
+      "Cache-Control: no-store em TODA /api/* (middleware externo cobre 200/401/413/429/503) e em /ready",
+      "logs sem QR/nome/JID: 'WhatsApp conectado.' sem identidade; cron usa sha256-8 do jid",
+      "sem server secrets em resposta: /ready público continua {ok:boolean}",
+      "sem retry de operação paga: callLLM single-shot (verificado, nunca houve loop)",
+      "readonly conferido: grep sendMessage/readMessages/readHistory/presenceSubscribe/sendPresenceUpdate/sendReadReceipt/chatRead em src/ → zero ocorrências"
+    ]
+  },
+  "files_changed": [
+    "src/api.ts",
+    "src/config.ts",
+    "src/cron.ts",
+    "src/index.ts",
+    "src/wa.ts",
+    "src/lib/http-guards.ts",
+    "src/lib/llm-readiness.ts",
+    "src/lib/ai-gate.ts (novo)",
+    "tools/llm-queue.mjs",
+    "tests/api.test.ts",
+    "tests/connection-state.test.ts",
+    "tests/http-guards.test.ts",
+    "tests/llm-readiness.test.ts",
+    "tests/llm-queue.test.ts (novo)",
+    "specs/reliability_design.md (§2/§5/§6 atualizados + §6a)",
+    "specs/round2-freeze.json (este recibo)"
+  ],
+  "failures_preserved": [
+    "nenhuma falha nova escondida: suite 36/36 pass; o único ajuste de asserção foi no-store/401→(401|429) porque o bucket global de auth já estava esgotado pelos testes anteriores no MESMO processo (comportamento esperado do limite)",
+    "limitações honestas mantidas em §6 (rate limit em memória, Anthropic sem probe, isolamento PG por database, fila de produção aguardando restart do Root)"
+  ]
+}

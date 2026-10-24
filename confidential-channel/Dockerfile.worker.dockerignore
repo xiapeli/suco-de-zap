@@ -1,0 +1,13 @@
+**
+!backend/
+!backend/package.json
+!backend/package-lock.json
+!backend/tsconfig.json
+!backend/src/
+!backend/src/**
+!confidential-channel/
+!confidential-channel/package.json
+!confidential-channel/package-lock.json
+!confidential-channel/server.mjs
+!confidential-channel/operational-gateway.mjs
+!confidential-channel/operational-entry.mjs

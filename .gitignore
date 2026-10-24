@@ -1,0 +1,19 @@
+node_modules/
+dist/
+build/
+coverage/
+
+# Segredos e estados locais — nunca commitar
+.env
+.env.*
+!.env.example
+*.private.json
+*.private.key
+gcloud-config/
+.dockerignore.local
+
+# Dados de operação e provas de deployment
+PROBE-*.json
+screenshots/
+*.log
+state/

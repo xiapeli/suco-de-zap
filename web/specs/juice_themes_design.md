@@ -1,0 +1,16 @@
+# Temas preservados e entrada para fazer suco
+
+16/10/2026. Modo Operate. Phelipe exige preservar os 17 modelos (RH, relacionamento/namoro, trabalho, finanças etc.) dentro do motor e embaixo da entrada. Rejeitou a chamada “Busque nos seus sucos”: abertura deve convidar a fazer suco, com voz brasileira leve. Estrutura/identidade Google+LP mantida, somente extensão local.
+
+## UX
+Título “De que papo vai sair suco?”; apoio “Do grupo do trabalho ao papo a dois. Escolha um tema ou conte o que quer entender.” Ação Preparar suco, sem consumo ao preparar. Modelos logo abaixo, agrupados por Dia a dia, Trabalho, RH, Relacionamento, Finanças, Todos17, em lista de links compactos com descrição da saída. Texto do campo pode acompanhar qualquer modelo como foco opcional. Não obrigar repetir a categoria. Ex.: Relacionamento + o que combinamos sobre a viagem; RH + feedbacks sobre o projeto Aurora. Sucos salvos continuam secundários/reutilizáveis na mesma página.
+
+Cada modelo segue conversa→período→conferir tema/foco/quantidade→Gerar meu suco. Selecionar modelo NÃO gera automaticamente. Pedido livre continua separado. Catálogo compartilhado de metadados, prompts canônicos no servidor; todos17 preservados integralmente, com instrução adicional de evidência e foco. Nome amigável no app; ID antigo preservado para resumos salvos. Categoria não é filtro de busca SQL literal: orienta o resumo das mensagens sincronizadas da conversa/período escolhidos.
+
+## Engine / segurança
+Canonical backend/src/data/juice-catalog.json:17IDs/prompts existentes, versão explícita. Gerador Python gera somente metadados para web; testes conferem igualdade. GET /api/juice-catalog autenticado retorna versão/metadados sem prompts e sem IA. Novo corpo de geração versionado com analysis_type, template_version e focus opcional2000; modelo desconhecido/versão errada rejeitados antes de SQL/quota/IA dentro do motor. Prompt canônico server-side, não controlado pelo browser; custom aceita pedido próprio. Geração antiga sem versão mantém prompt/hash para onboarding/cron/retries existentes. Quota3/idempotência/tenant/readonly/Cofre intocados. Prompt inclui tema e foco na impressão digital; alterar foco em pedido pendente não cria retry automático nem bypass de cota.
+
+Sem chamadas a providers na QA: integrar resolução real de prompt ao payload final do modelo via função pura usada pelo summarizer, verificar17IDs+custom/foco e fluxo simulado com POST explicitamente confirmado. Renderização Reacttexto, inputvalidado2lados, erro semdados privados. Prompts tratam mensagens como fonte, não instrução; não inventar diagnóstico, valor, prazo ou sentimento de alguém.
+
+## Visual / aceite
+Manrope/verde papel#f7faed/folha#183c2c/lima#d9f779/lavanda#e8ddfb/pêssego#ffe0c5. Mesmo Surf bordas/spacing/type/layout já consultado; não declarar nova consulta. Sem divisórias ou grid de caixas iguais. Filtragem com botões44px e aria-pressed; links naturais, teclado, sem rolagem horizontal320/390/1440. Duas rodadas visuais no máximo e finish review independente exigida Impeccable. Preservar a versão pública atual: esta tarefa continua a prévia de produto; app/API novos devem publicar juntos quando enviados. Não publicar distfixturesemConvex.

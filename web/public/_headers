@@ -1,0 +1,14 @@
+# TEMPLATE (modo legado): substitua SEU-LEGACY-API-AQUI pela origem oficial
+# do seu deployment (a mesma de VITE_SUCO_LEGACY_API_ORIGIN) antes de publicar.
+/*
+  X-Content-Type-Options: nosniff
+  Referrer-Policy: no-referrer
+  X-Frame-Options: DENY
+  Permissions-Policy: camera=(), microphone=(), geolocation=()
+  Content-Security-Policy: default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src 'self' https://SEU-LEGACY-API-AQUI; object-src 'none'; frame-src 'none'; worker-src 'none'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'
+  Strict-Transport-Security: max-age=31536000
+  Cache-Control: no-cache
+/assets/*
+  Cache-Control: public, max-age=31536000, immutable
+/fonts/*
+  Cache-Control: public, max-age=31536000, immutable

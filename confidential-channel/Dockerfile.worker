@@ -1,0 +1,38 @@
+FROM cloudflare/cloudflared:2026.8.2@sha256:0aa26e284f05e6c77ae375b8c9c11d9eb6a448fb7bcd8d40f31cb6176189eb38 AS tunnel
+
+FROM node:22-bookworm-slim AS build
+WORKDIR /app/backend
+COPY backend/package.json backend/package-lock.json ./
+RUN npm ci --no-audit --no-fund
+COPY backend/tsconfig.json ./
+COPY backend/src ./src
+RUN npm run build
+
+FROM node:22-bookworm-slim
+COPY --from=tunnel /usr/local/bin/cloudflared /usr/local/bin/cloudflared
+WORKDIR /app/backend
+COPY backend/package.json backend/package-lock.json ./
+RUN npm ci --omit=dev --no-audit --no-fund
+COPY --from=build /app/backend/dist ./dist
+# ffmpeg decodes WhatsApp opus voice notes to WAV for GLM-ASR transcription.
+RUN apt-get update && apt-get install -y --no-install-recommends ffmpeg \
+ && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /app/channel
+COPY confidential-channel/package.json confidential-channel/package-lock.json ./
+RUN npm ci --omit=dev --no-audit --no-fund
+COPY confidential-channel/server.mjs confidential-channel/operational-gateway.mjs confidential-channel/operational-entry.mjs confidential-channel/private-daily.mjs confidential-channel/deployment-pin.mjs ./
+
+ENV SUCO_CONFIDENTIAL_RUNTIME=1 PORT=8080
+# Deployment identity baked into the image: Confidential Space only allows
+# TUNNEL_TOKEN as a runtime env override, so everything else enters here.
+ARG SUCO_SUPABASE_URL
+ARG SUCO_SUPABASE_PUBLISHABLE_KEY
+ARG SUCO_GLM_SECRET_RESOURCE
+ARG SUCO_CHANNEL_ALLOWED_ORIGIN
+ENV SUCO_SUPABASE_URL=$SUCO_SUPABASE_URL \
+    SUCO_SUPABASE_PUBLISHABLE_KEY=$SUCO_SUPABASE_PUBLISHABLE_KEY \
+    SUCO_GLM_SECRET_RESOURCE=$SUCO_GLM_SECRET_RESOURCE \
+    SUCO_CHANNEL_ALLOWED_ORIGIN=$SUCO_CHANNEL_ALLOWED_ORIGIN
+LABEL "tee.launch_policy.allow_env_override"="TUNNEL_TOKEN"
+CMD ["node", "/app/channel/operational-entry.mjs"]
